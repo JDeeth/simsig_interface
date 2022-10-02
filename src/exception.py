@@ -4,3 +4,7 @@ class SimSigException(Exception):
 
 class InvalidLogin(SimSigException):
     """Attempted to connect to payware sim with invalid user credentials"""
+
+
+class ConnectionTimeout(SimSigException):
+    """Connection timed out"""

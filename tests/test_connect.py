@@ -1,9 +1,14 @@
-from sqlite3 import connect
 import pytest
-import stomp.utils
 import stomp.exception
+import stomp.listener
+import stomp.utils
+
 from connection import Connection
-from exception import InvalidLogin
+from exception import InvalidLogin, ConnectionTimeout
+
+from tests.util import arg_or_kwarg
+
+# pylint: disable=all
 
 """
 Connection times out:
@@ -17,22 +22,6 @@ Simsig sends disconnect message
 """
 
 
-@pytest.fixture
-def MockConnection(mocker):
-    return mocker.patch("stomp.Connection")
-
-
-@pytest.fixture
-def inner_connection(MockConnection):
-    return MockConnection.return_value
-
-
-@pytest.fixture
-def default_connection(MockConnection):
-    connection = Connection()
-    connection.connect()
-
-
 def should_connect_to_localhost_51515_by_default(MockConnection, default_connection):
     MockConnection.assert_called_once_with([("localhost", 51515)])
 
@@ -42,13 +31,14 @@ def should_connect_to_specified_addr_and_port(MockConnection, inner_connection):
     MockConnection.assert_called_once_with([("123.45.6.78", 24601)])
 
 
-def should_use_connect_command(inner_connection, default_connection):
+def should_use_connect_command(default_connection, inner_connection):
     assert inner_connection.connect.call_args.kwargs["with_connect_command"] == True
 
 
-def should_subscribe_to_simsig_topics(inner_connection, default_connection):
+def should_subscribe_to_simsig_topics(default_connection, inner_connection):
+    subscribe_calls = inner_connection.subscribe.call_args_list
     subscribed_topics = {
-        c.kwargs["destination"] for c in inner_connection.subscribe.call_args_list
+        arg_or_kwarg(call, 0, "destination") for call in subscribe_calls
     }
     assert subscribed_topics == {
         "/topic/SimSig",
@@ -58,16 +48,27 @@ def should_subscribe_to_simsig_topics(inner_connection, default_connection):
     }
 
 
-def should_handle_timeout_on_connect(inner_connection):
+def should_raise_timeout_exception(inner_connection):
     attrs = {"connect.side_effect": stomp.exception.ConnectFailedException}
     inner_connection.configure_mock(**attrs)
 
     connection = Connection()
 
-    connection.connect()
+    with pytest.raises(ConnectionTimeout):
+        connection.connect()
 
 
-def should_handle_password_rejection(mocker):
+def should_send_username_and_password(inner_connection):
+    connection = Connection()
+
+    connection.connect(username="alice", password="swordfish")
+
+    connect_call = inner_connection.connect.call_args
+    assert connect_call.kwargs["username"] == "alice"
+    assert connect_call.kwargs["passcode"] == "swordfish"
+
+
+def should_handle_password_rejection(MockConnection):
     """When connecting to a payware sim without valid username/password,
     SimSig sends a STOMP frame like this:
 
@@ -78,24 +79,16 @@ def should_handle_password_rejection(mocker):
     Then SimSig/Stomp disconnect (and call listener.on_disconnect())
     """
 
-    # avoiding fixtures to ensure correct sequence
-    MC = mocker.patch("stomp.Connection")
     connection = Connection()
-    inner_connection = MC.return_value
+    inner_connection = MockConnection.return_value
 
     error_frame = stomp.utils.Frame(
         cmd="ERROR", headers=None, body="Invalid login/passcode"
     )
 
     def connect_side_effect(*args, **kwargs):
-        # find all connection listeners
-        listeners = []
-        for call in inner_connection.set_listener.call_args_list:
-            listener = call.kwargs.get("listener")
-            if not listener:
-                # then listener is 2nd positional argument
-                listener = call.args[1]
-            listeners.append(listener)
+        calls = inner_connection.set_listener.call_args_list
+        listeners = [arg_or_kwarg(call, 1, "listener") for call in calls]
 
         for listener in listeners:
             listener.on_error(error_frame)
@@ -112,6 +105,37 @@ def should_handle_password_rejection(mocker):
         connection.connect()
 
 
-# todo: disconnect
-# todo: throw exception on timeout
-# todo: interface for username+password
+def should_disconnect(default_connection, inner_connection):
+    inner_connection.disconnect.assert_not_called()
+
+    default_connection.disconnect()
+
+    inner_connection.disconnect.assert_called()
+
+
+def should_set_get_remove_stomp_listener():
+    # NOT mocking stomp.Connect - do not call connect()
+    connection = Connection()
+
+    assert connection.get_stomp_listener("test_listener") is None
+
+    class TestListener(stomp.listener.ConnectionListener):
+        def __init__(self):
+            self.messages = []
+
+        def on_message(self, frame):
+            self.messages.append(frame)
+
+    test_listener = TestListener()
+
+    connection.set_stomp_listener("test_listener", test_listener)
+
+    assert connection.get_stomp_listener("test_listener") is test_listener
+
+    connection.simulate_receive_message("First message")
+    connection.remove_stomp_listener("test_listener")
+    connection.simulate_receive_message("Second message")
+
+    assert len(test_listener.messages) == 1
+    assert test_listener.messages[0].body == "First message"
+    assert connection.get_stomp_listener("test_listener") is None

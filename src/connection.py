@@ -1,27 +1,40 @@
-import stomp
-import stomp.exception
+from typing import Optional
 
-from exception import InvalidLogin
+import stomp  # type: ignore
+import stomp.exception  # type: ignore
+import stomp.utils  # type: ignore
+
+from exception import ConnectionTimeout, InvalidLogin
 
 
 class Connection:  # pylint: disable=too-few-public-methods
     """Wraps Stomp connection to SimSig gateway"""
 
-    def __init__(self, address: str = "localhost", port: int = 51515):
+    def __init__(self, address: str = "localhost", port: int = 51515) -> None:
         self._connection = stomp.Connection([(address, port)])
 
-    def connect(self) -> None:
+    def connect(
+        self, username: Optional[str] = None, password: Optional[str] = None
+    ) -> None:
         """Connects and subscribes to SimSig"""
 
-        class InvalidLoginListener(stomp.listener.ConnectionListener):
+        class InvalidLoginListener(stomp.listener.ConnectionListener):  # type: ignore
             """Catches credentials error when connecting to a payware sim"""
 
-            def on_error(self, frame):
+            def on_error(self, frame: stomp.utils.Frame) -> None:
                 raise InvalidLogin(frame.body)
 
+        # this listener only exists for the duration of the connection attempt,
+        # to capture any ERROR frame sent in response to our CONNECT
         self._connection.set_listener("invalid_login", InvalidLoginListener())
+
         try:
-            self._connection.connect(wait=True, with_connect_command=True)
+            self._connection.connect(
+                wait=True,
+                with_connect_command=True,
+                username=username,
+                passcode=password,
+            )
             for i, topic in enumerate(
                 [
                     "SimSig",
@@ -31,6 +44,38 @@ class Connection:  # pylint: disable=too-few-public-methods
                 ]
             ):
                 self._connection.subscribe(destination=f"/topic/{topic}", id=i + 1)
-        except stomp.exception.ConnectFailedException:
-            pass
+        except stomp.exception.ConnectFailedException as exc:
+            raise ConnectionTimeout() from exc
+
         self._connection.remove_listener("invalid_login")
+
+    def disconnect(self) -> None:
+        """Disconnect from SimSig game"""
+        self._connection.disconnect()
+
+    def set_stomp_listener(
+        self, name: str, listener: stomp.listener.ConnectionListener
+    ) -> None:
+        """Attach listener to underlying STOMP connection"""
+        self._connection.set_listener(name=name, listener=listener)
+
+    def get_stomp_listener(
+        self, name: str
+    ) -> Optional[stomp.listener.ConnectionListener]:
+        """Get listener from underlying STOMP connection by name
+        If it doesn't exist, returns None
+        """
+        return self._connection.get_listener(name)
+
+    def remove_stomp_listener(self, name: str) -> None:
+        """Remove listener from underlying STOMP connection by name"""
+        self._connection.remove_listener(name)
+
+    def simulate_receive_message(
+        self, message_body: str, headers: Optional[dict[str, str]] = None
+    ) -> None:
+        """Construct MESSAGE frame and pass to underlying STOMP connection
+
+        Simulates STOMP server sending a message. For testing."""
+        frame = stomp.utils.Frame(cmd="MESSAGE", headers=headers, body=message_body)
+        self._connection.transport.process_frame(frame, repr(frame))
