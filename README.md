@@ -1,6 +1,13 @@
 # SimSig Interface Client
 
+[![Tests](https://github.com/JDeeth/simsig_interface/actions/workflows/run_tests.yaml/badge.svg)](https://github.com/JDeeth/simsig_interface/actions/workflows/run_tests.yaml)
+
 This will be a wrapper for the SimSig Interface Gateway, aimed at support of other client apps.
+
+- [x] Set up project, test framework, etc
+- [x] `Connection` class wrapping [`stomp.py`](https://jasonrbriggs.github.io/stomp.py/quickstart.html#command-line-client)
+- [ ] Parse messages from SimSig
+- [ ] Send commands to SimSig
 
 ## SimSig Interface Gateway
 

@@ -1,10 +1,11 @@
 from typing import Optional, Dict
-
 import stomp  # type: ignore
 import stomp.exception  # type: ignore
 import stomp.utils  # type: ignore
 
-from .exception import ConnectionTimeout, InvalidLogin
+from simsig_interface.exception import ConnectionTimeout, InvalidLogin
+from simsig_interface.listener import SimListener
+from simsig_interface.parser import Parser
 
 
 class Connection:  # pylint: disable=too-few-public-methods
@@ -12,6 +13,10 @@ class Connection:  # pylint: disable=too-few-public-methods
 
     def __init__(self, address: str = "localhost", port: int = 51515) -> None:
         self._connection = stomp.Connection([(address, port)])
+        self.sim = SimListener()
+        self._connection.set_listener("sim_data", self.sim)
+        self._parser = Parser()
+        self._connection.set_listener("parser", self._parser)
 
     def connect(
         self, username: Optional[str] = None, password: Optional[str] = None
@@ -52,6 +57,10 @@ class Connection:  # pylint: disable=too-few-public-methods
     def disconnect(self) -> None:
         """Disconnect from SimSig game"""
         self._connection.disconnect()
+
+    def set_listener(self, name: str, listener) -> None:
+        """Add SimSig listener to connection"""
+        self._parser.listeners[name] = listener
 
     def set_stomp_listener(
         self, name: str, listener: stomp.listener.ConnectionListener

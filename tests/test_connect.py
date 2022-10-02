@@ -2,8 +2,9 @@ import pytest
 import stomp.exception
 import stomp.listener
 import stomp.utils
+import datetime
 
-from simsig_interface.connection import Connection
+from simsig_interface import Connection
 from simsig_interface.exception import InvalidLogin, ConnectionTimeout
 
 from tests.util import arg_or_kwarg
@@ -140,3 +141,30 @@ def should_set_get_remove_stomp_listener():
     assert len(test_listener.messages) == 1
     assert test_listener.messages[0].body == "First message"
     assert connection.get_stomp_listener("test_listener") is None
+
+
+def should_show_sim_name_time_and_speed():
+    # NOT mocking stomp.Connect - do not call connect()
+    connection = Connection()
+
+    assert connection.sim.name == None
+    assert connection.sim.latest_time.time() == datetime.time(0, 0, 0)
+    assert connection.sim.speed_ratio == pytest.approx(1.0)
+
+    connection.simulate_receive_message(
+        """
+    {
+        "clock_msg": {
+            "area_id": "waterloo",
+            "clock": 20362,
+            "interval": 1000
+        }
+    }
+    """
+    )
+
+    assert connection.sim.name == "waterloo"
+    assert connection.sim.latest_time.time() == datetime.time(
+        hour=5, minute=39, second=22
+    )
+    assert connection.sim.speed_ratio == pytest.approx(0.5)
