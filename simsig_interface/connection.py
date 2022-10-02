@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, Dict
 
 import stomp  # type: ignore
 import stomp.exception  # type: ignore
 import stomp.utils  # type: ignore
 
-from exception import ConnectionTimeout, InvalidLogin
+from .exception import ConnectionTimeout, InvalidLogin
 
 
 class Connection:  # pylint: disable=too-few-public-methods
@@ -72,7 +72,7 @@ class Connection:  # pylint: disable=too-few-public-methods
         self._connection.remove_listener(name)
 
     def simulate_receive_message(
-        self, message_body: str, headers: Optional[dict[str, str]] = None
+        self, message_body: str, headers: Optional[Dict[str, str]] = None
     ) -> None:
         """Construct MESSAGE frame and pass to underlying STOMP connection
 

@@ -3,8 +3,8 @@ import stomp.exception
 import stomp.listener
 import stomp.utils
 
-from connection import Connection
-from exception import InvalidLogin, ConnectionTimeout
+from simsig_interface.connection import Connection
+from simsig_interface.exception import InvalidLogin, ConnectionTimeout
 
 from tests.util import arg_or_kwarg
 
@@ -32,7 +32,8 @@ def should_connect_to_specified_addr_and_port(MockConnection, inner_connection):
 
 
 def should_use_connect_command(default_connection, inner_connection):
-    assert inner_connection.connect.call_args.kwargs["with_connect_command"] == True
+    # 3.7 compatibility: call_args[1] == call_args.kwargs
+    assert inner_connection.connect.call_args[1]["with_connect_command"] == True
 
 
 def should_subscribe_to_simsig_topics(default_connection, inner_connection):
@@ -64,8 +65,8 @@ def should_send_username_and_password(inner_connection):
     connection.connect(username="alice", password="swordfish")
 
     connect_call = inner_connection.connect.call_args
-    assert connect_call.kwargs["username"] == "alice"
-    assert connect_call.kwargs["passcode"] == "swordfish"
+    assert connect_call[1]["username"] == "alice"
+    assert connect_call[1]["passcode"] == "swordfish"
 
 
 def should_handle_password_rejection(MockConnection):

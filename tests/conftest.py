@@ -1,6 +1,6 @@
 import pytest
 
-from connection import Connection
+from simsig_interface.connection import Connection
 
 
 @pytest.fixture
