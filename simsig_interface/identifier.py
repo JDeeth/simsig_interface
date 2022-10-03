@@ -8,7 +8,7 @@ another - may need a "sim era" parameter alongside "sim name".)
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import ClassVar, Tuple, Union
+from typing import ClassVar, Optional, Tuple, Union
 
 
 class Entity(Enum):
@@ -43,8 +43,10 @@ SsigUid = str
 TrainSsigId = Tuple[TrainDescription, SimName, SsigUid]
 FullId = Union[PwayId, TrainSsigId]
 
-class Identifier():
+
+class Identifier:
     """Base class for identity of any SimSig Interface Gateway entity"""
+
     @property
     @abstractmethod
     def full_id(self) -> FullId:
@@ -55,7 +57,8 @@ class Identifier():
     def str(self) -> str:
         """Represent ID in human-readable string"""
 
-@dataclass
+
+@dataclass(frozen=True)
 class PwayIdentifier(Identifier):
     """Unique identifier for an infrastructure entity
 
@@ -87,67 +90,88 @@ class PwayIdentifier(Identifier):
 # pylint: disable=missing-class-docstring
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrackCircuitIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "T"
     entity_type: ClassVar[Entity] = Entity.TRACK_CIRCUIT
 
 
-@dataclass
+@dataclass(frozen=True)
 class BerthIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = ""
     entity_type: ClassVar[Entity] = Entity.TD_BERTH
 
 
-@dataclass
+@dataclass(frozen=True)
 class PointsIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "P"
     entity_type: ClassVar[Entity] = Entity.POINTS
 
 
-@dataclass
+@dataclass(frozen=True)
 class SignalIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "S"
     entity_type: ClassVar[Entity] = Entity.SIGNAL
 
 
-@dataclass
+@dataclass(frozen=True)
 class FlagIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "L"
     entity_type: ClassVar[Entity] = Entity.FLAG
 
 
-@dataclass
+class RouteClass(Enum):
+    MAIN = "M"
+    SHUNT = "S"
+    CALL_ON = "C"
+    VIRTUAL = "V"
+
+
+@dataclass(frozen=True)
 class RouteIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "R"
     entity_type: ClassVar[Entity] = Entity.ROUTE
 
+    signal: Optional[str] = None
+    position: Optional[str] = None
+    class_: Optional[RouteClass] = None
 
-@dataclass
+    def __post_init__(self):
+        if len(self.local_id) < 3:
+            return
+        class_letter = self.local_id[-1]
+        position_letter = self.local_id[-2]
+        if class_letter in "MSCV" and position_letter.isalpha():
+            object.__setattr__(self, "signal", self.local_id[:-2])
+            object.__setattr__(self, "position", position_letter)
+            object.__setattr__(self, "class_", RouteClass(class_letter))
+
+
+@dataclass(frozen=True)
 class SubrouteIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "U"
     entity_type: ClassVar[Entity] = Entity.SUBROUTE
 
 
-@dataclass
+@dataclass(frozen=True)
 class GroundFrameIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "F"
     entity_type: ClassVar[Entity] = Entity.GROUND_FRAME
 
 
-@dataclass
+@dataclass(frozen=True)
 class ManualCrossingIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "G"
     entity_type: ClassVar[Entity] = Entity.MANUAL_CROSSING
 
 
-@dataclass
+@dataclass(frozen=True)
 class AutomaticCrossingIdentifier(PwayIdentifier):
     id_prefix: ClassVar[PrefixLetter] = "H"
     entity_type: ClassVar[Entity] = Entity.AUTOMATIC_CROSSING
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrainIdentifier(Identifier):
     """Identifier for train in SSIG context"""
 

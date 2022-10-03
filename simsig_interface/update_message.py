@@ -50,13 +50,13 @@ class BaseUpdate:
     sim_time: datetime.datetime
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrackCircuitUpdate(TrackCircuitIdentifier, BaseUpdate):
 
     is_clear: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class BerthUpdate(BerthIdentifier, BaseUpdate):
     class Action(Enum):
         INTERPOSE = auto()
@@ -66,7 +66,7 @@ class BerthUpdate(BerthIdentifier, BaseUpdate):
     train_description: TrainDescription
 
 
-@dataclass
+@dataclass(frozen=True)
 class PointsUpdate(PointsIdentifier, BaseUpdate):
     detected_normal: bool
     detected_reverse: bool
@@ -77,7 +77,7 @@ class PointsUpdate(PointsIdentifier, BaseUpdate):
     locked: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class SignalUpdate(SignalIdentifier, BaseUpdate):
     aspect: SignalAspect
     bpull: bool
@@ -90,32 +90,32 @@ class SignalUpdate(SignalIdentifier, BaseUpdate):
     stack_x: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class FlagUpdate(FlagIdentifier, BaseUpdate):
     """The meaning of the flag state is up to the user to determine"""
 
     state: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class RouteUpdate(RouteIdentifier, BaseUpdate):
-    is_set: bool
+    is_set: Optional[bool] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class SubrouteUpdate(SubrouteIdentifier, BaseUpdate):
     locked: bool
     overlap: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class GroundFrameUpdate(GroundFrameIdentifier, BaseUpdate):
     release_given: bool
     release_taken: bool
     reminder: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class ManualCrossingUpdate(
     ManualCrossingIdentifier, BaseUpdate
 ):  # pylint: disable=too-many-instance-attributes
@@ -137,7 +137,7 @@ class ManualCrossingUpdate(
     crossing_obstructed: bool  # = state == "2" and blocked == "2"
 
 
-@dataclass
+@dataclass(frozen=True)
 class AutomaticCrossingUpdate(AutomaticCrossingIdentifier, BaseUpdate):
     class State(Enum):
         IDLE = 0
@@ -146,6 +146,7 @@ class AutomaticCrossingUpdate(AutomaticCrossingIdentifier, BaseUpdate):
         RED_LIGHTS = 3
         BARRIERS_DOWN = 4
 
+    state: State
     user_state: Any  # Meaning TBC
     telephone_message: Any  # Meaning TBC
     reminder: bool
@@ -153,7 +154,7 @@ class AutomaticCrossingUpdate(AutomaticCrossingIdentifier, BaseUpdate):
     fail_acknowledged: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrainLocationUpdate(TrainIdentifier, BaseUpdate):
     entity_type: ClassVar[Entity] = Entity.TRAIN_LOCATION
 
@@ -169,7 +170,7 @@ class TrainLocationUpdate(TrainIdentifier, BaseUpdate):
     aspect_passing: Optional[SignalAspect]
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrainDelayUpdate(TrainIdentifier, BaseUpdate):
     """Note: these messages uniquely do not convey the sim time. For
     consistency, these messages will include the sim time from the most recent

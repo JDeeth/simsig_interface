@@ -8,3 +8,7 @@ class InvalidLogin(SimSigException):
 
 class ConnectionTimeout(SimSigException):
     """Connection timed out"""
+
+
+class MalformedStompMessage(SimSigException):
+    """STOMP message contained unexpected data"""

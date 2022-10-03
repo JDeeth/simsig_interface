@@ -4,13 +4,20 @@ from enum import Enum, auto
 import json
 import logging
 import stomp
+from simsig_interface.exception import MalformedStompMessage
 
 from simsig_interface.identifier import FullId
 from simsig_interface.update_message import (
+    AutomaticCrossingUpdate,
     BaseUpdate,
     BerthUpdate,
+    FlagUpdate,
+    GroundFrameUpdate,
+    ManualCrossingUpdate,
+    RouteUpdate,
     SignalAspect,
     SignalUpdate,
+    SubrouteUpdate,
     TrackCircuitUpdate,
     PointsUpdate,
 )
@@ -35,7 +42,7 @@ class SimpleSubscriber(BaseSubscriber):
 
     def on_update(self, update_message: BaseUpdate):
         """Records the update by full ID"""
-        self._entities[update_message.full_id] = update_message
+        self._entities[update_message.full_id] = update_message  # type: ignore
 
 
 class Parser(stomp.ConnectionListener):
@@ -135,26 +142,38 @@ class Parser(stomp.ConnectionListener):
 
     def _parse_sg_msg(self, message, generic):
         """Parse messages relating to interlocking (SG_MSG)"""
+
+        def is_true(key: str) -> bool:
+            """Converts `"True"` and `"False"` strings to boolean"""
+            value = message.get(key, "")
+            if isinstance(value, bool):
+                return value
+            if value.lower() not in {"true", "false"}:
+                raise MalformedStompMessage(
+                    f"Expected boolean/'True'/'False' for '{key}' in {message}"
+                )
+            return value.lower() == "true"
+
         obj_type = message.get("obj_type" or None)
-        local_id = message["obj_id"][1:]
+        generic["local_id"] = message["obj_id"][1:]
         if obj_type == "track":
             self._send_update(
                 TrackCircuitUpdate(
-                    **generic, local_id=local_id, is_clear=self._true(message, "clear")
+                    **generic,
+                    is_clear=is_true("clear"),
                 )
             )
         elif obj_type == "point":
             self._send_update(
                 PointsUpdate(
                     **generic,
-                    local_id=local_id,
-                    detected_normal=self._true(message, "dn"),
-                    detected_reverse=self._true(message, "dr"),
-                    called_normal=self._true(message, "cn"),
-                    called_reverse=self._true(message, "cr"),
-                    keyed_normal=self._true(message, "kn"),
-                    keyed_reverse=self._true(message, "kr"),
-                    locked=self._true(message, "locked"),
+                    detected_normal=is_true("dn"),
+                    detected_reverse=is_true("dr"),
+                    called_normal=is_true("cn"),
+                    called_reverse=is_true("cr"),
+                    keyed_normal=is_true("kn"),
+                    keyed_reverse=is_true("kr"),
+                    locked=is_true("locked"),
                 )
             )
         elif obj_type == "signal":
@@ -162,21 +181,80 @@ class Parser(stomp.ConnectionListener):
             self._send_update(
                 SignalUpdate(
                     **generic,
-                    local_id=local_id,
                     aspect=SignalAspect(aspect_num),
-                    bpull=self._true(message, "bpull"),
-                    route_set=self._true(message, "rset"),
-                    approach_locked=self._true(message, "appr_lock"),
-                    lamp_proven=self._true(message, "lp"),
-                    auto_mode=self._true(message, "auto"),
-                    train_ready_to_start=self._true(message, "trts"),
-                    stack_n=self._true(message, "stackN"),
-                    stack_x=self._true(message, "stackX"),
+                    bpull=is_true("bpull"),
+                    route_set=is_true("rset"),
+                    approach_locked=is_true("appr_lock"),
+                    lamp_proven=is_true("lp"),
+                    auto_mode=is_true("auto"),
+                    train_ready_to_start=is_true("trts"),
+                    stack_n=is_true("stackN"),
+                    stack_x=is_true("stackX"),
                 )
             )
-
-    def _true(self, message, key) -> bool:
-        return message.get(key, "").lower() == "true"
+        elif obj_type == "flag":
+            self._send_update(
+                FlagUpdate(
+                    **generic,
+                    state=int(message["state"]),
+                )
+            )
+        elif obj_type == "route":
+            self._send_update(
+                RouteUpdate(
+                    **generic,
+                    is_set=is_true("is_set"),
+                )
+            )
+        elif obj_type == "ulc":
+            self._send_update(
+                SubrouteUpdate(
+                    **generic,
+                    locked=is_true("locked"),
+                    overlap=is_true("overlap"),
+                )
+            )
+        elif obj_type == "frame":
+            self._send_update(
+                GroundFrameUpdate(
+                    **generic,
+                    release_given=is_true("release_given"),
+                    release_taken=is_true("release_taken"),
+                    reminder=is_true("reminder"),
+                )
+            )
+        elif obj_type == "crossing":
+            state = int(message["state"])
+            self._send_update(
+                ManualCrossingUpdate(
+                    **generic,
+                    state=ManualCrossingUpdate.State(state),
+                    reminder_lower=is_true("lower_reminder"),
+                    reminder_raise=is_true("raise_reminder"),
+                    reminder_clear=is_true("clear_reminder"),
+                    reminder_auto=is_true("auto_reminder"),
+                    auto_raise=is_true("auto_lower"),  # sic
+                    requested_lower=is_true("request_lower"),
+                    requested_raise=is_true("request_raise"),
+                    # blocked: 0=barriers up, 1:barriers down, 2: down and obstructed
+                    crossing_obstructed=message["blocked"] == 2,
+                )
+            )
+        elif obj_type == "ahb":
+            state = int(message["state"])
+            self._send_update(
+                AutomaticCrossingUpdate(
+                    **generic,
+                    state=AutomaticCrossingUpdate.State(state),
+                    user_state=message["user_state"],
+                    telephone_message=message["tel_message"],
+                    reminder=is_true("reminder"),
+                    failed=is_true("failed"),
+                    fail_acknowledged=is_true("failed_ack"),
+                )
+            )
+        else:
+            raise MalformedStompMessage(f"Unexpected 'obj_type' in {message}")
 
     def _send_update(self, update):
         """send update to subscribers"""

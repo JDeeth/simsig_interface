@@ -7,7 +7,7 @@ from simsig_interface.exception import ConnectionTimeout, InvalidLogin
 from simsig_interface.parser import Parser
 
 
-class Connection:  # pylint: disable=too-few-public-methods
+class Connection:
     """Wraps Stomp connection to SimSig gateway"""
 
     def __init__(self, address: str = "localhost", port: int = 51515) -> None:
