@@ -5,10 +5,11 @@ import json
 import logging
 import stomp
 
-from simsig_interface.entity import (
-    FullId,
+from simsig_interface.identifier import FullId
+from simsig_interface.update_message import (
     BaseUpdate,
     BerthUpdate,
+    SignalAspect,
     SignalUpdate,
     TrackCircuitUpdate,
     PointsUpdate,
@@ -81,14 +82,14 @@ class Parser(stomp.ConnectionListener):
         try:
             payload = json.loads(frame.body)
             for msg_type, message in payload.items():
-                self.parse_message(msg_type, message)
+                self._parse_message(msg_type, message)
         except json.JSONDecodeError:
             logging.warning(
                 "SimSig message assumed to be JSON but could not parse: %s", frame.body
             )
             return
 
-    def parse_message(self, msg_type: str, message: Dict) -> None:
+    def _parse_message(self, msg_type: str, message: Dict) -> None:
         """Digest SimSig message and pass on to subscribers"""
 
         # update sim data
@@ -137,13 +138,13 @@ class Parser(stomp.ConnectionListener):
         obj_type = message.get("obj_type" or None)
         local_id = message["obj_id"][1:]
         if obj_type == "track":
-            return self._send_update(
+            self._send_update(
                 TrackCircuitUpdate(
                     **generic, local_id=local_id, is_clear=self._true(message, "clear")
                 )
             )
-        if obj_type == "point":
-            return self._send_update(
+        elif obj_type == "point":
+            self._send_update(
                 PointsUpdate(
                     **generic,
                     local_id=local_id,
@@ -156,13 +157,13 @@ class Parser(stomp.ConnectionListener):
                     locked=self._true(message, "locked"),
                 )
             )
-        if obj_type == "signal":
+        elif obj_type == "signal":
             aspect_num = int(message["aspect"])
-            return self._send_update(
+            self._send_update(
                 SignalUpdate(
                     **generic,
                     local_id=local_id,
-                    aspect=SignalUpdate.Aspect(aspect_num),
+                    aspect=SignalAspect(aspect_num),
                     bpull=self._true(message, "bpull"),
                     route_set=self._true(message, "rset"),
                     approach_locked=self._true(message, "appr_lock"),

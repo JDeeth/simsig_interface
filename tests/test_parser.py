@@ -1,7 +1,6 @@
 from datetime import time
-import pytest
 from simsig_interface import Connection
-from simsig_interface.entity import BerthUpdate, Entity
+from simsig_interface.update_message import BerthUpdate, Entity, SignalAspect
 from simsig_interface.parser import SimpleSubscriber
 
 # pylint: disable=all
@@ -177,7 +176,7 @@ SIGNAL = """
 }
 """.strip()
 
-from simsig_interface.entity import SignalUpdate
+from simsig_interface.update_message import SignalUpdate
 
 
 def should_parse_signal_message():
@@ -185,7 +184,7 @@ def should_parse_signal_message():
 
     k980 = test_subscriber.get_entity((Entity.SIGNAL, "royston", "K980"))
 
-    assert k980.aspect == SignalUpdate.Aspect.GREEN
+    assert k980.aspect == SignalAspect.GREEN
     assert not k980.bpull
     assert k980.route_set
     assert not k980.approach_locked
