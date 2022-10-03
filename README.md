@@ -64,6 +64,8 @@ For example with the `stomp.py` command line client:
 
 There will be a delay while SimSig authenticates you.
 
+If SimSig cannot authenticate you, it will reply with an `ERROR` frame with "Invalid login/passcode" as the body, then close the connection.
+
 ### True/false and numbers as strings
 
 SimSig communicates using JSON messages, but often represents boolean and integer values as strings, rather than as JSON `true`, `false`, and integers.

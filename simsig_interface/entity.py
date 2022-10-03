@@ -5,7 +5,6 @@ from typing import ClassVar, Tuple
 
 # pylint: disable=missing-class-docstring
 
-
 class Entity(Enum):
     """Types of object or event SimSig can send messages about"""
 
@@ -14,7 +13,7 @@ class Entity(Enum):
     TRACK_CIRCUIT = auto()
     ROUTE = auto()
     SUBROUTE = auto()
-    POINT = auto()
+    POINTS = auto()
     SIGNAL = auto()
     TD_BERTH = auto()
     GROUND_FRAME = auto()
@@ -27,20 +26,30 @@ class Entity(Enum):
 
     OTHER = auto()
 
+SimName = str
+LocalId = str
+PrefixLetter = str
 
 @dataclass
 class Identifier:
-    """Unique identifier for an infrastructure entity"""
+    """Unique identifier for an infrastructure entity
 
-    sim: str
-    id: str  # pylint: disable=invalid-name
-    id_prefix: ClassVar[str] = ""
+    Properties:
+    sim: the name of the simulation e.g. "exeter"
+    entity_type: is this a signal, track circuit, ground frame etc
+    id_prefix: letter prefix on identifier in STOMP messages e.g. L for Flag IDs
+    local_id: the ID of the entity within this sim _without_ the prefix letter
+    """
+
+    sim: SimName
     entity_type: ClassVar[Entity]
+    id_prefix: ClassVar[PrefixLetter] = ""
+    local_id: LocalId
 
     @property
-    def full_id(self) -> Tuple[Entity, str, str]:
+    def full_id(self) -> Tuple[Entity, SimName, LocalId]:
         """sim + type + id needed to uniquely identify any entity"""
-        return (self.entity_type, self.sim, self.id)
+        return (self.entity_type, self.sim, self.local_id)
 
 
 @dataclass
