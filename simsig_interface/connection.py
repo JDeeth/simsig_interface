@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional, Dict
 import stomp  # type: ignore
 import stomp.exception  # type: ignore
@@ -10,9 +11,15 @@ from simsig_interface.parser import Parser
 class Connection:
     """Wraps Stomp connection to SimSig gateway"""
 
-    def __init__(self, address: str = "localhost", port: int = 51515) -> None:
+    def __init__(
+        self,
+        address: str = "localhost",
+        port: int = 51515,
+        sim_date: datetime.date = datetime.date(2000, 1, 1),
+    ) -> None:
+        self._sim_date = sim_date
         self._connection = stomp.Connection([(address, port)])
-        self.sim = Parser()
+        self.sim = Parser(sim_date)
         self._connection.set_listener("sim_data", self.sim)
 
     def connect(

@@ -1,1 +1,2 @@
 from simsig_interface.connection import Connection
+from simsig_interface.parser import BaseSubscriber

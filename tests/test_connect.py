@@ -147,7 +147,7 @@ def should_show_sim_name_time_and_speed():
     # NOT mocking stomp.Connect - do not call connect()
     connection = Connection()
 
-    assert connection.sim.name == None
+    assert connection.sim.name == ""
     assert connection.sim.latest_time.time() == datetime.time(0, 0, 0)
     assert connection.sim.speed_ratio == pytest.approx(1.0)
 

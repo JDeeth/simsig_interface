@@ -39,9 +39,9 @@ PrefixLetter = str
 PwayId = Tuple[Entity, SimName, LocalId]
 
 TrainDescription = str  # aka headcode
-SsigUid = str
-TrainSsigId = Tuple[TrainDescription, SimName, SsigUid]
-FullId = Union[PwayId, TrainSsigId]
+TrainUid = str
+TrainFullId = str
+FullId = Union[PwayId, TrainFullId]
 
 
 class Identifier:
@@ -176,13 +176,14 @@ class TrainIdentifier(Identifier):
     """Identifier for train in SSIG context"""
 
     train_description: TrainDescription  # aka headcode
-    ssig_uid: str
-    sim: SimName  # context for ssig_uid
+    uid: TrainUid
 
     @property
-    def full_id(self) -> TrainSsigId:
-        return (self.train_description, self.sim, self.ssig_uid)
+    def full_id(self) -> TrainFullId:
+        return self.uid if self.uid else self.train_description
 
     @property
     def str(self) -> str:
-        return f"{self.sim.title()}:{self.ssig_uid} {self.train_description}"
+        if self.uid:
+            return f"{self.train_description}:{self.uid}"
+        return self.full_id

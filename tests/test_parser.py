@@ -2,12 +2,14 @@ from datetime import time
 import pytest
 from simsig_interface import Connection
 from simsig_interface.exception import MalformedStompMessage
+from simsig_interface.identifier import SignalIdentifier, TrainIdentifier
 from simsig_interface.update_message import (
     AutomaticCrossingUpdate,
     BerthUpdate,
     Entity,
     ManualCrossingUpdate,
     SignalAspect,
+    TrainLocationUpdate,
 )
 from simsig_interface.parser import SimpleSubscriber
 
@@ -193,10 +195,10 @@ def should_parse_signal_message():
     assert k980.aspect == SignalAspect.GREEN
     assert k980.bpull == False
     assert k980.route_set == True
-    assert k980.approach_locked == False
+    assert k980.appr_lock == False
     assert k980.lamp_proven == True
     assert k980.auto_mode == False
-    assert k980.train_ready_to_start == False
+    assert k980.trts == False
     assert k980.stack_n == False
     assert k980.stack_x == False
     assert k980.sim_time.time() == time(0, 10, 17)
@@ -326,14 +328,14 @@ def should_parse_manual_crossing_message():
 
     assert mcb.state == ManualCrossingUpdate.State.UP
 
-    assert mcb.reminder_lower == False
-    assert mcb.reminder_raise == False
-    assert mcb.reminder_clear == False
-    assert mcb.reminder_auto == False
+    assert mcb.lower_reminder == False
+    assert mcb.raise_reminder == False
+    assert mcb.clear_reminder == False
+    assert mcb.auto_reminder == False
 
     assert mcb.auto_raise == True
-    assert mcb.requested_lower == True
-    assert mcb.requested_raise == False
+    assert mcb.request_lower == True
+    assert mcb.request_raise == False
     assert mcb.crossing_obstructed == False
 
 
@@ -366,10 +368,10 @@ def should_parse_automatic_crossing_message():
     # user_state and tel_message should not be converted to int
     # pending an understanding of what these fields mean
     assert ahb.user_state == "0"
-    assert ahb.telephone_message == "23"
+    assert ahb.tel_message == "23"
     assert ahb.reminder == False
     assert ahb.failed == False
-    assert ahb.fail_acknowledged == False
+    assert ahb.failed_ack == False
 
 
 TRAIN_LOCATION_TIPLOC = """
@@ -380,15 +382,25 @@ TRAIN_LOCATION_TIPLOC = """
         "action": "pass",
         "location": "INTJN",
         "platform": "5",
-        "time": 15445
+        "time": 17445
     }
 }
 """.strip()
 
 
-@pytest.mark.xfail
 def should_parse_train_location_tiploc_message():
-    raise NotImplemented
+    connection, test_subscriber = conn_and_subsc(BERTH_INTERPOSE_MSG)
+    connection.simulate_receive_message(TRAIN_LOCATION_TIPLOC)
+
+    train_id = TrainIdentifier(uid="4", train_description="5M01")
+    train_location = test_subscriber.get_entity(train_id.full_id)
+
+    assert train_location.action == TrainLocationUpdate.Action.PASS
+    assert train_location.location == "INTJN"
+    assert train_location.platform == "5"
+    assert train_location.sim_time.time() == time(4, 50, 45)
+    assert train_location.aspect_approaching is None
+    assert train_location.aspect_passing is None
 
 
 TRAIN_LOCATION_SIGNAL = """
@@ -407,25 +419,41 @@ TRAIN_LOCATION_SIGNAL = """
 """.strip()
 
 
-@pytest.mark.xfail
 def should_parse_train_location_signal_message():
-    raise NotImplemented
+    connection, test_subscriber = conn_and_subsc(BERTH_INTERPOSE_MSG)
+    connection.simulate_receive_message(TRAIN_LOCATION_SIGNAL)
+
+    train_id = TrainIdentifier(uid="5", train_description="1O28")
+    train_location = test_subscriber.get_entity(train_id.full_id)
+
+    assert train_location.action == TrainLocationUpdate.Action.PASS
+    assert train_location.location == SignalIdentifier(sim="waterloo", local_id="VC92")
+    assert train_location.platform == ""
+    assert train_location.sim_time.time() == time(4, 30, 57)
+    assert train_location.aspect_approaching is SignalAspect.YELLOW
+    assert train_location.aspect_passing is SignalAspect.GREEN
 
 
 TRAIN_DELAY = """
 {
     "train_delay": {
         "headcode": "5M01",
-        "uid": "",
+        "uid": "W24601",
         "delay": -240
     }
 }
 """.strip()
 
 
-@pytest.mark.xfail
+@pytest.mark.wip
 def should_parse_train_delay_message():
-    raise NotImplemented
+    connection, test_subscriber = conn_and_subsc(BERTH_INTERPOSE_MSG)
+    connection.simulate_receive_message(TRAIN_DELAY)
+
+    train_id = TrainIdentifier(uid="W24601", train_description="5M01")
+    train_delay = test_subscriber.get_entity(train_id.full_id)
+
+    assert train_delay.delay == -240
 
 
 SURPRISE_JSON_BOOLEAN_MSG = """
@@ -450,19 +478,6 @@ def should_parse_json_boolean():
     assert tc_1371.is_clear == True
 
 
-GARBLED_BOOL_MSG = """
-{
-    "SG_MSG": {
-        "area_id": "waterloo",
-        "obj_id": "T1371",
-        "obj_type": "track",
-        "clear": "Probably",
-        "msg_type": "SG",
-        "time": "16280"
-    }
-}
-""".strip()
-
 UNEXPECTED_OBJ_TYPE_MSG = """
 {
     "SG_MSG": {
@@ -477,7 +492,7 @@ UNEXPECTED_OBJ_TYPE_MSG = """
 """.strip()
 
 
-@pytest.mark.parametrize("message", [GARBLED_BOOL_MSG, UNEXPECTED_OBJ_TYPE_MSG])
+@pytest.mark.parametrize("message", [UNEXPECTED_OBJ_TYPE_MSG])
 def should_throw_malformedstompmessage_on_bad_data(message):
     with pytest.raises(MalformedStompMessage):
         conn_and_subsc(message)

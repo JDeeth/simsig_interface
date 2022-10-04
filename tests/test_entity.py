@@ -15,10 +15,18 @@ def test_pway_identifier_string():
     assert tc.str == "Waterloo Track Circuit T4269"
 
 
-def test_train_identifier_string():
-    train = TrainIdentifier("1A80", "42", "exeter")
+def test_train_identifier_no_uid():
+    train = TrainIdentifier(train_description="2B10", uid="")
 
-    assert train.str == "Exeter:42 1A80"
+    assert train.str == "2B10"
+    assert train.full_id == "2B10"
+
+
+def test_train_identifier_with_uid():
+    train = TrainIdentifier(train_description="1A80", uid="W24601")
+
+    assert train.str == "1A80:W24601"
+    assert train.full_id == "W24601"
 
 
 @pytest.mark.parametrize(
