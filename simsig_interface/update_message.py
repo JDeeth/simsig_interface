@@ -12,17 +12,17 @@ from simsig_interface.identifier import (
     Entity,
     PwayId,
     TrainDescription,
-    TrackCircuitIdentifier,
-    BerthIdentifier,
-    PointsIdentifier,
-    SignalIdentifier,
-    FlagIdentifier,
-    RouteIdentifier,
-    SubrouteIdentifier,
-    GroundFrameIdentifier,
-    ManualCrossingIdentifier,
-    AutomaticCrossingIdentifier,
-    TrainIdentifier,
+    TrackCircuitId,
+    BerthId,
+    PointsId,
+    SignalId,
+    FlagId,
+    RouteId,
+    SubrouteId,
+    GroundFrameId,
+    ManualCrossingId,
+    AutomaticCrossingId,
+    TrainId,
 )
 
 # pylint: disable=missing-class-docstring, too-many-instance-attributes
@@ -70,7 +70,7 @@ class BaseUpdate:
 
 
 @dataclass(frozen=True)
-class TrackCircuitUpdate(TrackCircuitIdentifier, BaseUpdate):
+class TrackCircuitUpdate(TrackCircuitId, BaseUpdate):
 
     is_clear: bool
 
@@ -81,7 +81,7 @@ class TrackCircuitUpdate(TrackCircuitIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class BerthUpdate(BerthIdentifier, BaseUpdate):
+class BerthUpdate(BerthId, BaseUpdate):
     class Action(Enum):
         INTERPOSE = auto()
         CANCEL = auto()
@@ -91,7 +91,7 @@ class BerthUpdate(BerthIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class PointsUpdate(PointsIdentifier, BaseUpdate):
+class PointsUpdate(PointsId, BaseUpdate):
     detected_normal: bool
     detected_reverse: bool
     called_normal: bool
@@ -112,7 +112,7 @@ class PointsUpdate(PointsIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class SignalUpdate(SignalIdentifier, BaseUpdate):
+class SignalUpdate(SignalId, BaseUpdate):
     aspect: SignalAspect
     bpull: bool
     route_set: bool
@@ -136,7 +136,7 @@ class SignalUpdate(SignalIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class FlagUpdate(FlagIdentifier, BaseUpdate):
+class FlagUpdate(FlagId, BaseUpdate):
     """The meaning of the flag state is up to the user to determine"""
 
     state: int
@@ -148,18 +148,18 @@ class FlagUpdate(FlagIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class RouteUpdate(RouteIdentifier, BaseUpdate):
+class RouteUpdate(RouteId, BaseUpdate):
     is_set: Optional[bool] = None
 
 
 @dataclass(frozen=True)
-class SubrouteUpdate(SubrouteIdentifier, BaseUpdate):
+class SubrouteUpdate(SubrouteId, BaseUpdate):
     locked: bool
     overlap: bool
 
 
 @dataclass(frozen=True)
-class GroundFrameUpdate(GroundFrameIdentifier, BaseUpdate):
+class GroundFrameUpdate(GroundFrameId, BaseUpdate):
     release_given: bool
     release_taken: bool
     reminder: bool
@@ -167,7 +167,7 @@ class GroundFrameUpdate(GroundFrameIdentifier, BaseUpdate):
 
 @dataclass(frozen=True)
 class ManualCrossingUpdate(
-    ManualCrossingIdentifier, BaseUpdate
+    ManualCrossingId, BaseUpdate
 ):  # pylint: disable=too-many-instance-attributes
     class State(Enum):
         UP = 0
@@ -195,7 +195,7 @@ class ManualCrossingUpdate(
 
 
 @dataclass(frozen=True)
-class AutomaticCrossingUpdate(AutomaticCrossingIdentifier, BaseUpdate):
+class AutomaticCrossingUpdate(AutomaticCrossingId, BaseUpdate):
     class State(Enum):
         IDLE = 0
         DELAYED_LOWERING = 1
@@ -217,7 +217,7 @@ class AutomaticCrossingUpdate(AutomaticCrossingIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class TrainLocationUpdate(TrainIdentifier, BaseUpdate):
+class TrainLocationUpdate(TrainId, BaseUpdate):
     entity_type: ClassVar[Entity] = Entity.TRAIN_LOCATION
 
     class Action(Enum):
@@ -234,7 +234,7 @@ class TrainLocationUpdate(TrainIdentifier, BaseUpdate):
     @classmethod
     def from_gateway_message(cls, message):
         if "aspPass" in message and message["location"].startswith("S"):
-            message["location"] = SignalIdentifier(
+            message["location"] = SignalId(
                 sim=message["sim"], local_id=message["location"][1:]
             )
             message["aspect_approaching"] = SignalAspect(message["aspAppr"])
@@ -248,7 +248,7 @@ class TrainLocationUpdate(TrainIdentifier, BaseUpdate):
 
 
 @dataclass(frozen=True)
-class TrainDelayUpdate(TrainIdentifier, BaseUpdate):
+class TrainDelayUpdate(TrainId, BaseUpdate):
     """Note: these messages uniquely do not convey the sim time. For
     consistency, these messages will include the sim time from the most recent
     message."""

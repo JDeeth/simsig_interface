@@ -1,9 +1,12 @@
 import datetime
-from typing import Optional, Dict
+from enum import Enum
+import json
+from typing import Optional, Dict, Union
 import stomp  # type: ignore
 import stomp.exception  # type: ignore
 import stomp.utils  # type: ignore
 
+from simsig_interface.identifier import BerthId
 from simsig_interface.exception import ConnectionTimeout, InvalidLogin
 from simsig_interface.parser import Parser
 
@@ -21,6 +24,14 @@ class Connection:
         self._connection = stomp.Connection([(address, port)])
         self.sim = Parser(sim_date)
         self._connection.set_listener("sim_data", self.sim)
+
+    class _Topic(Enum):
+        """STOMP destinations used by SimSig"""
+
+        SIMSIG = "/topic/SimSig"
+        TD_ALL_SIG_AREA = "/topic/TD_ALL_SIG_AREA"
+        TRAIN_MVT_ALL_TOC = "/topic/TRAIN_MVT_ALL_TOC"
+        TRAIN_MVT_SUMMARY = "/topic/TRAIN_MVT_SUMMARY"
 
     def connect(
         self, username: Optional[str] = None, password: Optional[str] = None
@@ -44,15 +55,8 @@ class Connection:
                 username=username,
                 passcode=password,
             )
-            for i, topic in enumerate(
-                [
-                    "SimSig",
-                    "TD_ALL_SIG_AREA",
-                    "TRAIN_MVT_ALL_TOC",
-                    "TRAIN_MVT_SUMMARY",
-                ]
-            ):
-                self._connection.subscribe(destination=f"/topic/{topic}", id=i + 1)
+            for i, topic in enumerate(Connection._Topic):
+                self._connection.subscribe(destination=topic.value, id=i + 1)
         except stomp.exception.ConnectFailedException as exc:
             raise ConnectionTimeout() from exc
 
@@ -92,3 +96,48 @@ class Connection:
         Simulates STOMP server sending a message. For testing."""
         frame = stomp.utils.Frame(cmd="MESSAGE", headers=headers, body=message_body)
         self._connection.transport.process_frame(frame, repr(frame))
+
+    def _send_json(self, topic: _Topic, body: Union[Dict, str]) -> None:
+        """Internal method to convert message to json and send to topic"""
+        if isinstance(body, dict):
+            body = json.dumps(body)
+        self._connection.send(topic.value, body, content_type="application/json")
+
+    def request_snapshot(self) -> None:
+        """Request status of all signalling-related entities"""
+        self._send_json(self._Topic.TD_ALL_SIG_AREA, {"snapshot": {}})
+
+    def berth_interpose(self, berth: BerthId, train_description: str) -> None:
+        """Interpose train description into berth"""
+        body = {
+            "cc_msg": {
+                "to": berth.local_id,
+                "descr": train_description,
+            }
+        }
+        self._send_json(self._Topic.TD_ALL_SIG_AREA, body)
+
+    def berth_cancel(self, berth: BerthId) -> None:
+        """Clear train description from berth"""
+        body = {
+            "cb_msg": {
+                "from": berth.local_id,
+            }
+        }
+        self._send_json(self._Topic.TD_ALL_SIG_AREA, body)
+
+    def berth_step(
+        self,
+        from_berth: BerthId,
+        to_berth: BerthId,
+        train_description: str,
+    ) -> None:
+        """Move train description between berths"""
+        body = {
+            "ca_msg": {
+                "from": from_berth.local_id,
+                "to": to_berth.local_id,
+                "descr": train_description,
+            }
+        }
+        self._send_json(self._Topic.TD_ALL_SIG_AREA, body)

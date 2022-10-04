@@ -90,8 +90,20 @@ class Parser(stomp.ConnectionListener):
     def on_message(self, frame: stomp.utils.Frame) -> None:
         """Update sim data"""
         try:
-            payload = json.loads(frame.body)
-            for msg_type, message in payload.items():
+            # Duplicate key workaround
+            # input:  {"SG_MSG": {message_1}, "SG_MSG": {message_2}}
+            # interim result: [{message_1}, {message_2}, {"SG_MSG": None}]
+            msg_list = list()
+
+            def collect_msg(obj):
+                msg_list.append(obj)
+
+            json.loads(frame.body, object_hook=collect_msg)
+
+            msg_type_dict = msg_list.pop(-1)
+            msg_type = list(msg_type_dict)[0]
+
+            for message in msg_list:
                 self._parse_message(msg_type, message)
         except json.JSONDecodeError:
             logging.warning(

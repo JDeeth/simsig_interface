@@ -59,8 +59,8 @@ class Identifier:
 
 
 @dataclass(frozen=True)
-class PwayIdentifier(Identifier):
-    """Unique identifier for an infrastructure entity
+class SignallingId(Identifier):
+    """Unique identifier for an object relating to signalling
 
     Properties:
     sim: the name of the simulation e.g. "exeter"
@@ -91,31 +91,31 @@ class PwayIdentifier(Identifier):
 
 
 @dataclass(frozen=True)
-class TrackCircuitIdentifier(PwayIdentifier):
+class TrackCircuitId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "T"
     entity_type: ClassVar[Entity] = Entity.TRACK_CIRCUIT
 
 
 @dataclass(frozen=True)
-class BerthIdentifier(PwayIdentifier):
+class BerthId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = ""
     entity_type: ClassVar[Entity] = Entity.TD_BERTH
 
 
 @dataclass(frozen=True)
-class PointsIdentifier(PwayIdentifier):
+class PointsId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "P"
     entity_type: ClassVar[Entity] = Entity.POINTS
 
 
 @dataclass(frozen=True)
-class SignalIdentifier(PwayIdentifier):
+class SignalId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "S"
     entity_type: ClassVar[Entity] = Entity.SIGNAL
 
 
 @dataclass(frozen=True)
-class FlagIdentifier(PwayIdentifier):
+class FlagId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "L"
     entity_type: ClassVar[Entity] = Entity.FLAG
 
@@ -128,7 +128,7 @@ class RouteClass(Enum):
 
 
 @dataclass(frozen=True)
-class RouteIdentifier(PwayIdentifier):
+class RouteId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "R"
     entity_type: ClassVar[Entity] = Entity.ROUTE
 
@@ -148,31 +148,31 @@ class RouteIdentifier(PwayIdentifier):
 
 
 @dataclass(frozen=True)
-class SubrouteIdentifier(PwayIdentifier):
+class SubrouteId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "U"
     entity_type: ClassVar[Entity] = Entity.SUBROUTE
 
 
 @dataclass(frozen=True)
-class GroundFrameIdentifier(PwayIdentifier):
+class GroundFrameId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "F"
     entity_type: ClassVar[Entity] = Entity.GROUND_FRAME
 
 
 @dataclass(frozen=True)
-class ManualCrossingIdentifier(PwayIdentifier):
+class ManualCrossingId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "G"
     entity_type: ClassVar[Entity] = Entity.MANUAL_CROSSING
 
 
 @dataclass(frozen=True)
-class AutomaticCrossingIdentifier(PwayIdentifier):
+class AutomaticCrossingId(SignallingId):
     id_prefix: ClassVar[PrefixLetter] = "H"
     entity_type: ClassVar[Entity] = Entity.AUTOMATIC_CROSSING
 
 
 @dataclass(frozen=True)
-class TrainIdentifier(Identifier):
+class TrainId(Identifier):
     """Identifier for train in SSIG context"""
 
     train_description: TrainDescription  # aka headcode

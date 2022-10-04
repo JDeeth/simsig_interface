@@ -1,29 +1,29 @@
 import pytest
 from simsig_interface.identifier import (
     RouteClass,
-    RouteIdentifier,
-    TrackCircuitIdentifier,
-    TrainIdentifier,
+    RouteId,
+    TrackCircuitId,
+    TrainId,
 )
 
 # pylint: disable=all
 
 
 def test_pway_identifier_string():
-    tc = TrackCircuitIdentifier("waterloo", 4269)
+    tc = TrackCircuitId("waterloo", 4269)
 
     assert tc.str == "Waterloo Track Circuit T4269"
 
 
 def test_train_identifier_no_uid():
-    train = TrainIdentifier(train_description="2B10", uid="")
+    train = TrainId(train_description="2B10", uid="")
 
     assert train.str == "2B10"
     assert train.full_id == "2B10"
 
 
 def test_train_identifier_with_uid():
-    train = TrainIdentifier(train_description="1A80", uid="W24601")
+    train = TrainId(train_description="1A80", uid="W24601")
 
     assert train.str == "1A80:W24601"
     assert train.full_id == "W24601"
@@ -41,7 +41,7 @@ def test_train_identifier_with_uid():
     ],
 )
 def test_route_identifier_categories_self(local_id, signal, position, class_):
-    route = RouteIdentifier("royston", local_id)
+    route = RouteId("royston", local_id)
 
     assert route.signal == signal
     assert route.position == position

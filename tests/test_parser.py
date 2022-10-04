@@ -2,7 +2,7 @@ from datetime import time
 import pytest
 from simsig_interface import Connection
 from simsig_interface.exception import MalformedStompMessage
-from simsig_interface.identifier import SignalIdentifier, TrainIdentifier
+from simsig_interface.identifier import SignalId, TrainId
 from simsig_interface.update_message import (
     AutomaticCrossingUpdate,
     BerthUpdate,
@@ -374,6 +374,38 @@ def should_parse_automatic_crossing_message():
     assert ahb.failed_ack == False
 
 
+SNAPSHOT_DUPLICATE_KEY_MSG = """
+{
+    "SG_MSG": {
+        "area_id": "waterloo",
+        "obj_id": "T1371",
+        "obj_type": "track",
+        "clear": "False",
+        "msg_type": "SG",
+        "time": "16280"
+    },
+    "SG_MSG": {
+        "area_id": "waterloo",
+        "obj_id": "T1372",
+        "obj_type": "track",
+        "clear": "True",
+        "msg_type": "SG",
+        "time": "16280"
+    }
+}
+""".strip()
+
+
+def should_parse_snapshot_duplicate_key_message():
+    _, test_subscriber = conn_and_subsc(SNAPSHOT_DUPLICATE_KEY_MSG)
+
+    t1371 = test_subscriber.get_entity((Entity.TRACK_CIRCUIT, "waterloo", "1371"))
+    t1372 = test_subscriber.get_entity((Entity.TRACK_CIRCUIT, "waterloo", "1372"))
+
+    assert t1371.is_clear == False
+    assert t1372.is_clear == True
+
+
 TRAIN_LOCATION_TIPLOC = """
 {
     "train_location": {
@@ -392,7 +424,7 @@ def should_parse_train_location_tiploc_message():
     connection, test_subscriber = conn_and_subsc(BERTH_INTERPOSE_MSG)
     connection.simulate_receive_message(TRAIN_LOCATION_TIPLOC)
 
-    train_id = TrainIdentifier(uid="4", train_description="5M01")
+    train_id = TrainId(uid="4", train_description="5M01")
     train_location = test_subscriber.get_entity(train_id.full_id)
 
     assert train_location.action == TrainLocationUpdate.Action.PASS
@@ -423,11 +455,11 @@ def should_parse_train_location_signal_message():
     connection, test_subscriber = conn_and_subsc(BERTH_INTERPOSE_MSG)
     connection.simulate_receive_message(TRAIN_LOCATION_SIGNAL)
 
-    train_id = TrainIdentifier(uid="5", train_description="1O28")
+    train_id = TrainId(uid="5", train_description="1O28")
     train_location = test_subscriber.get_entity(train_id.full_id)
 
     assert train_location.action == TrainLocationUpdate.Action.PASS
-    assert train_location.location == SignalIdentifier(sim="waterloo", local_id="VC92")
+    assert train_location.location == SignalId(sim="waterloo", local_id="VC92")
     assert train_location.platform == ""
     assert train_location.sim_time.time() == time(4, 30, 57)
     assert train_location.aspect_approaching is SignalAspect.YELLOW
@@ -450,7 +482,7 @@ def should_parse_train_delay_message():
     connection, test_subscriber = conn_and_subsc(BERTH_INTERPOSE_MSG)
     connection.simulate_receive_message(TRAIN_DELAY)
 
-    train_id = TrainIdentifier(uid="W24601", train_description="5M01")
+    train_id = TrainId(uid="W24601", train_description="5M01")
     train_delay = test_subscriber.get_entity(train_id.full_id)
 
     assert train_delay.delay == -240
